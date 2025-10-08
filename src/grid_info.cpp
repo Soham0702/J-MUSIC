@@ -162,6 +162,7 @@ void Cell_info::OutputEvolutionDataXYEta(SCGrid &arena,
                 double uz = ueta*cosh_eta + utau*sinh_eta;
                 double vz = uz/ut;
 
+
                 double T_local   = eos.get_temperature(e_local, rhob_local);
                 double cs2_local = eos.get_cs2(e_local, rhob_local);
                 double muB_local = eos.get_mu(e_local, rhob_local);
@@ -279,7 +280,190 @@ void Cell_info::OutputEvolutionDataXYEta(SCGrid &arena,
     }
 }
 
-    
+
+
+
+void Cell_info::OutputEvolutionDataXYEta_chun(SCGrid &arena, double tau) {
+    // the format of the file is as follows,
+    //    itau ix iy ieta e P T cs^2 ux uy ueta
+    // if turn_on_shear == 1:
+    //    itau ix iy ieta e P T cs^2 ux uy ueta Wxx Wxy Wxeta Wyy Wyeta
+    // if turn_on_shear == 1 and turn_on_bulk == 1:
+    //    itau ix iy ieta e P T cs^2 ux uy ueta Wxx Wxy Wxeta Wyy Wyeta pi_b
+    // if turn_on_rhob == 1:
+    //    itau ix iy ieta e P T cs^2 ux uy ueta rho_B mu_B
+    // if turn_on_rhob == 1 and turn_on_shear == 1:
+    //    itau ix iy ieta e P T cs^2 ux uy ueta rho_B mu_B Wxx Wxy Wxeta Wyy Wyeta
+    // if turn_on_rhob == 1 and turn_on_shear == 1 and turn_on_diff == 1:
+    //    itau ix iy ieta e P T cs^2 ux uy ueta rho_B mu_B Wxx Wxy Wxeta Wyy Wyeta qx qy qeta
+    // if turn_on_rhob == 1 and turn_on_shear == 1 and turn_on_bulk == 1 and turn_on_diff == 1:
+    //    itau ix iy ieta e P T cs^2 ux uy ueta rho_B mu_B Wxx Wxy Wxeta Wyy Wyeta pi_b qx qy qeta
+    // Here ueta = tau*ueta, Wieta = tau*Wieta, Wetaeta = tau^2*Wetaeta, qeta = tau*qeta
+    // Here Wij is reduced variables Wij/(e+P) in the fluid rest frame
+    // and qi is reduced variables qi/kappa_hat in the fluid rest frame
+    const string out_name_xyeta = "evolution_all_xyeta.dat";
+    string out_open_mode;
+    FILE *out_file_xyeta;
+    // If it's the first timestep, overwrite the previous file
+    if (tau == DATA.tau0) {
+        out_open_mode = "wb";
+    } else {
+        out_open_mode = "ab";
+    }
+    out_file_xyeta = fopen(out_name_xyeta.c_str(), out_open_mode.c_str());
+
+    int n_skip_tau     = DATA.output_evolution_every_N_timesteps;
+    double output_dtau = DATA.delta_tau*n_skip_tau;
+    int itau = static_cast<int>((tau - DATA.tau0)/(output_dtau) + 0.1);
+
+    int n_skip_x       = DATA.output_evolution_every_N_x;
+    int n_skip_y       = DATA.output_evolution_every_N_y;
+    int n_skip_eta     = DATA.output_evolution_every_N_eta;
+
+    // write out header
+    const int output_nx        = static_cast<int>(arena.nX()/n_skip_x);
+    const int output_ny        = static_cast<int>(arena.nY()/n_skip_y);
+    const int output_neta      = static_cast<int>(arena.nEta()/n_skip_eta);
+    const double output_dx     = DATA.delta_x*n_skip_x;
+    const double output_dy     = DATA.delta_y*n_skip_y;
+    const double output_deta   = DATA.delta_eta*n_skip_eta;
+    const double output_xmin   = - DATA.x_size/2.;
+    const double output_ymin   = - DATA.y_size/2.;
+    const double output_etamin = - DATA.eta_size/2.;
+
+    const int nVar_per_cell = (11 + DATA.turn_on_rhob*2 + DATA.turn_on_shear*5
+                                  + DATA.turn_on_bulk*1 + DATA.turn_on_diff*3);
+    if (tau == DATA.tau0) {
+        float header[] = {
+            static_cast<float>(DATA.tau0), static_cast<float>(output_dtau),
+            static_cast<float>(output_nx), static_cast<float>(output_dx),
+            static_cast<float>(output_xmin),
+            static_cast<float>(output_ny), static_cast<float>(output_dy),
+            static_cast<float>(output_ymin),
+            static_cast<float>(output_neta), static_cast<float>(output_deta),
+            static_cast<float>(output_etamin),
+            static_cast<float>(DATA.turn_on_rhob),
+            static_cast<float>(DATA.turn_on_shear),
+            static_cast<float>(DATA.turn_on_bulk),
+            static_cast<float>(DATA.turn_on_diff),
+            static_cast<float>(nVar_per_cell)};
+        fwrite(header, sizeof(float), 16, out_file_xyeta);
+    }
+    for (int ieta = 0; ieta < arena.nEta(); ieta += n_skip_eta) {
+        double eta_local = - DATA.eta_size/2. + ieta*DATA.delta_eta;
+        double cosh_eta = cosh(eta_local);
+        double sinh_eta = sinh(eta_local);
+        for (int iy = 0; iy < arena.nY(); iy += n_skip_y) {
+            for (int ix = 0; ix < arena.nX(); ix += n_skip_x) {
+                double e_local    = arena(ix, iy, ieta).epsilon;  // 1/fm^4
+                double rhob_local = arena(ix, iy, ieta).rhob;     // 1/fm^3
+
+                // T_local is in 1/fm
+                double T_local = eos.get_temperature(e_local, rhob_local);
+              
+	      	if (T_local*hbarc < DATA.output_evolution_T_cut) continue;
+                // only ouput fluid cells that are above cut-off temperature
+
+                double p_local    = eos.get_pressure(e_local, rhob_local);
+                double cs2        = eos.get_cs2(e_local, rhob_local);
+
+                double ux = arena(ix, iy, ieta).u[1];
+                double uy = arena(ix, iy, ieta).u[2];
+                double uz = (  arena(ix, iy, ieta).u[3]*cosh_eta
+                             + arena(ix, iy, ieta).u[0]*sinh_eta);
+
+
+
+                double muB_local = 0.0;
+                if (DATA.turn_on_rhob == 1)
+                    muB_local = eos.get_mu(e_local, rhob_local);
+
+                ShearVisVecLRF piLRF;
+                get_LRF_shear_stress_tensor(arena(ix, iy, ieta), eta_local,
+                                            piLRF);
+                double div_factor = e_local + p_local;  // 1/fm^4
+                double Wxx = 0.0;
+                double Wxy = 0.0;
+                double Wxz = 0.0;
+                double Wyy = 0.0;
+                double Wyz = 0.0;
+                if (DATA.turn_on_shear == 1) {
+                    Wxx = piLRF[0]/div_factor;
+                    Wxy = piLRF[1]/div_factor;
+                    Wxz = piLRF[2]/div_factor;
+                    Wyy = piLRF[3]/div_factor;
+                    Wyz = piLRF[4]/div_factor;
+                }
+
+                double pi_b = 0.0;
+                if (DATA.turn_on_bulk == 1) {
+                    pi_b = arena(ix, iy, ieta).pi_b/div_factor;
+                }
+
+                // outputs for baryon diffusion part
+                //double common_term_q = 0.0;
+                double qx = 0.0;
+                double qy = 0.0;
+                double qz = 0.0;
+                if (DATA.turn_on_diff == 1) {
+                    //common_term_q = rhob_local*T_local/div_factor;
+                    double kappa_hat = get_deltaf_qmu_coeff(T_local,
+                                                            muB_local);
+                    qx = piLRF[5]/kappa_hat;
+                    qy = piLRF[6]/kappa_hat;
+                    qz = piLRF[7]/kappa_hat;
+                }
+
+                float ideal[] = {static_cast<float>(itau),
+                                 static_cast<float>(ix/n_skip_x),
+                                 static_cast<float>(iy/n_skip_y),
+                                 static_cast<float>(ieta/n_skip_eta),
+                                 static_cast<float>(e_local*hbarc),
+                                 static_cast<float>(p_local*hbarc),
+                                 static_cast<float>(T_local*hbarc),
+                                 static_cast<float>(cs2),
+                                 static_cast<float>(ux),
+                                 static_cast<float>(uy),
+                                 static_cast<float>(uz)};
+
+                fwrite(ideal, sizeof(float), 11, out_file_xyeta);
+
+                if (DATA.turn_on_rhob == 1) {
+                    float mu[] = {static_cast<float>(rhob_local),
+                                  static_cast<float>(muB_local*hbarc)};
+                    fwrite(mu, sizeof(float), 2, out_file_xyeta);
+                }
+
+                if (DATA.turn_on_shear == 1) {
+                    float shear_pi[] = {static_cast<float>(Wxx),
+                                        static_cast<float>(Wxy),
+                                        static_cast<float>(Wxz),
+                                        static_cast<float>(Wyy),
+                                        static_cast<float>(Wyz)};
+                    fwrite(shear_pi, sizeof(float), 5, out_file_xyeta);
+                }
+
+                if (DATA.turn_on_bulk == 1) {
+                    float bulk_pi[] = {static_cast<float>(pi_b)};
+                    fwrite(bulk_pi, sizeof(float), 1, out_file_xyeta);
+                }
+
+                if (DATA.turn_on_diff == 1) {
+                    float diffusion[] = {static_cast<float>(qx),
+                                         static_cast<float>(qy),
+                                         static_cast<float>(qz)};
+                    fwrite(diffusion, sizeof(float), 3, out_file_xyeta);
+                }
+            }
+        }
+    }
+    fclose(out_file_xyeta);
+}
+
+
+
+
+/* 
 //! This function outputs hydro evolution file in binary format
 void Cell_info::OutputEvolutionDataXYEta_chun(SCGrid &arena, 
                                               double tau) {
@@ -408,7 +592,7 @@ void Cell_info::OutputEvolutionDataXYEta_chun(SCGrid &arena,
     }
     fclose(out_file_xyeta);
 }
-
+*/
 
 //! This function outputs hydro evolution file in binary format for photon production
 void Cell_info::OutputEvolutionDataXYEta_photon(SCGrid &arena, double tau) {
@@ -1205,4 +1389,80 @@ void Cell_info::output_momentum_anisotropy_vs_tau(
        << ecc2 << "  " << ecc3 << "  " << R_Pi << "  " << u_avg
        << endl;
     of.close();
+}
+
+void Cell_info::get_LRF_shear_stress_tensor(const Cell_small &cell,
+                                            const double eta_s,
+                                            ShearVisVecLRF &res) {
+    const double cosh_eta = cosh(eta_s);
+    const double sinh_eta = sinh(eta_s);
+
+    double u0 = cell.u[0];
+    double ux = cell.u[1];
+    double uy = cell.u[2];
+    double u3 = cell.u[3];
+    double ut = u0*cosh_eta + u3*sinh_eta;
+    double uz = u3*cosh_eta + u0*sinh_eta;
+    double LorentzBoost[4][4] = {
+        {ut, -ux, -uy, -uz},
+        {-ux, 1. + ux*ux/(ut+1.), ux*uy/(ut+1.), ux*uz/(ut+1.)},
+        {-uy, ux*uy/(ut+1.), 1. + uy*uy/(ut+1.), uy*uz/(ut+1.)},
+        {-uz, ux*uz/(ut+1.), uy*uz/(ut+1.), 1. + uz*uz/(ut+1.)}
+    };
+
+    auto ShearVisVec = cell.Wmunu;
+    double pi_tz[4][4];
+    pi_tz[0][0] = (  ShearVisVec[0]*cosh_eta*cosh_eta
+                   + 2.*ShearVisVec[3]*cosh_eta*sinh_eta
+                   + ShearVisVec[9]*sinh_eta*sinh_eta);
+    pi_tz[0][1] = ShearVisVec[1]*cosh_eta + ShearVisVec[6]*sinh_eta;
+    pi_tz[0][2] = ShearVisVec[2]*cosh_eta + ShearVisVec[8]*sinh_eta;
+    pi_tz[0][3] = (  ShearVisVec[0]*cosh_eta*sinh_eta
+                   + ShearVisVec[3]*(cosh_eta*cosh_eta
+                                       + sinh_eta*sinh_eta)
+                     + ShearVisVec[9]*sinh_eta*cosh_eta);
+    pi_tz[1][0] = pi_tz[0][1];
+    pi_tz[1][1] = ShearVisVec[4];
+    pi_tz[1][2] = ShearVisVec[5];
+    pi_tz[1][3] = ShearVisVec[1]*sinh_eta + ShearVisVec[6]*cosh_eta;
+    pi_tz[2][0] = pi_tz[0][2];
+    pi_tz[2][1] = pi_tz[1][2];
+    pi_tz[2][2] = ShearVisVec[7];
+    pi_tz[2][3] = ShearVisVec[2]*sinh_eta + ShearVisVec[8]*cosh_eta;
+    pi_tz[3][0] = pi_tz[0][3];
+    pi_tz[3][1] = pi_tz[1][3];
+    pi_tz[3][2] = pi_tz[2][3];
+    pi_tz[3][3] = pi_tz[0][0] - pi_tz[1][1] - pi_tz[2][2];
+    double pi_LRF[4][4];
+    for (int i = 1; i < 3; i++) {
+        for (int j = i; j < 4; j++) {
+            pi_LRF[i][j] = 0.;
+            for (int a = 0; a < 4; a++) {
+                for (int b = 0; b < 4; b++) {
+                    pi_LRF[i][j] += (LorentzBoost[i][a]*pi_tz[a][b]
+                                     *LorentzBoost[b][j]);
+                }
+            }
+        }
+    }
+    res[0] = pi_LRF[1][1];
+    res[1] = pi_LRF[1][2];
+    res[2] = pi_LRF[1][3];
+    res[3] = pi_LRF[2][2];
+    res[4] = pi_LRF[2][3];
+
+    double q_tz[4];
+    q_tz[0] = ShearVisVec[10]*cosh_eta + ShearVisVec[13]*sinh_eta;
+    q_tz[1] = ShearVisVec[11];
+    q_tz[2] = ShearVisVec[12];
+    q_tz[3] = ShearVisVec[10]*sinh_eta + ShearVisVec[13]*cosh_eta;
+    double q_LRF[4];
+    for (int i = 1; i < 4; i++) {
+        q_LRF[i] = 0.;
+        for (int a = 0; a < 4; a++)
+            q_LRF[i] += LorentzBoost[i][a]*q_tz[a];
+    }
+    res[5] = q_LRF[1];
+    res[6] = q_LRF[2];
+    res[7] = q_LRF[3];
 }
