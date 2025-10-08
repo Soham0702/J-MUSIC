@@ -36,8 +36,24 @@ void Jets::InitJets(hydro_source &hydro_source_terms) {
 
     srand (time(NULL));
 
+    double temp =DATA.ecm;  
+    double total_cross;             //in mb
+    if(temp == 200.)
+        total_cross = 42.3;
+    else if(temp == 2760.)
+        total_cross = 64.0;
+    else if(temp == 5020.)
+        total_cross = 70.0;
+    else if(temp == 7000.)
+        total_cross = 73.2;
+    else
+    {
+      std::cerr<<"ecm available are 200,2760,5020,7000 ; fix it; exiting."<<std::endl;
+      exit(1);
+    }
+        
     //total cross section[mb] 
-    double total_cross=70.; //for 2.76 TeV
+//    double total_cross=70.; //for 2.76 TeV
 
     //Clear parton list
     parton_list.clear();
