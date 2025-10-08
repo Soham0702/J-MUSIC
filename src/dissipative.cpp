@@ -1059,21 +1059,21 @@ double Diss::get_temperature_dependent_zeta_s(double temperature) {
     /////////////////////////////////////////////
     //           Parametrization 1             //
     /////////////////////////////////////////////
-    double Ttr=0.18/0.1973;
-    double dummy=temperature/Ttr;
-    double A1=-13.77, A2=27.55, A3=13.45;
-    double lambda1=0.9, lambda2=0.25, lambda3=0.9, lambda4=0.22;
-    double sigma1=0.025, sigma2=0.13, sigma3=0.0025, sigma4=0.022;
+   // double Ttr=0.18/0.1973;
+   // double dummy=temperature/Ttr;
+   // double A1=-13.77, A2=27.55, A3=13.45;
+   // double lambda1=0.9, lambda2=0.25, lambda3=0.9, lambda4=0.22;
+   // double sigma1=0.025, sigma2=0.13, sigma3=0.0025, sigma4=0.022;
  
-    double bulk = A1*dummy*dummy + A2*dummy - A3;
-    if (temperature < 0.995*Ttr) {
-        bulk = (lambda3*exp((dummy-1)/sigma3)
-                + lambda4*exp((dummy-1)/sigma4) + 0.03);
-    }
-    if (temperature > 1.05*Ttr) {
-        bulk = (lambda1*exp(-(dummy-1)/sigma1)
-                + lambda2*exp(-(dummy-1)/sigma2) + 0.001);
-    }
+   // double bulk = A1*dummy*dummy + A2*dummy - A3;
+   // if (temperature < 0.995*Ttr) {
+   //     bulk = (lambda3*exp((dummy-1)/sigma3)
+   //             + lambda4*exp((dummy-1)/sigma4) + 0.03);
+   // }
+   // if (temperature > 1.05*Ttr) {
+   //     bulk = (lambda1*exp(-(dummy-1)/sigma1)
+   //             + lambda2*exp(-(dummy-1)/sigma2) + 0.001);
+   // }
 
     /////////////////////////////////////////////
     //           Parametrization 2             //
@@ -1110,6 +1110,21 @@ double Diss::get_temperature_dependent_zeta_s(double temperature) {
     //if (temperature>0.99945*Ttr) {
     //    bulk = 0.901*exp(14.5*(1.0-dummy)) + 0.061/dummy/dummy;
     //}
+
+    ////////////////////////////////////////////
+    //           Parametrization 4            //
+    ////////////////////////////////////////////
+    double T_peak=0.16/hbarc;
+    double B1= 0.01/hbarc, B2=0.12/hbarc , Bnorm=0.13;
+
+    double dummy=temperature-T_peak;
+    double bulk;    
+    if (temperature<T_peak)
+        bulk = Bnorm*std::exp((-1.*dummy*dummy)/(B1*B1));
+    else if (temperature>T_peak)
+        bulk = Bnorm*std::exp((-1.*dummy*dummy)/(B2*B2));
+    else
+        bulk = Bnorm;
 
     return(bulk);
 }
