@@ -94,6 +94,10 @@ class Cell_info {
     //! This function outputs system's momentum anisotropy as a function of tau
     void output_momentum_anisotropy_vs_tau(
                 double tau, double eta_min, double eta_max, SCGrid &arena);
+
+    void get_LRF_shear_stress_tensor(const Cell_small &cell,
+                                            const double eta_s,
+                                            ShearVisVecLRF &res);
 };
 
 #endif  // SRC_GRID_INFO_H_
