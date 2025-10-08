@@ -87,14 +87,14 @@ void Jets::GetBinaries() {
     }
         
     string dummy;
-    getline(bins_file,dummy);
+//    getline(bins_file,dummy);
 
     binary_list.clear();
 
     while (!bins_file.eof()) {
         std::shared_ptr<jet> new_collision(new jet);
         int dum;
-	bins_file >> dum >> new_collision->x_perp >> new_collision->y_perp;
+	bins_file >>  new_collision->x_perp >> new_collision->y_perp;
         if (bins_file.eof()) break;
 	new_collision->eta_source=0.;
 	new_collision->tau_form=0.;
