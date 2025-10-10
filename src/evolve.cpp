@@ -1661,7 +1661,7 @@ int Evolve::FindFreezeOutSurface_boostinvariant_Cornelius(
                             s_file.write((char*) &(array[i]), sizeof(float));
                         }
                     } else {
-                        double dummy1=0.;dummy2=0.;
+                        double dummy1=0.,dummy2=0.;
                         s_file << scientific << setprecision(10) 
                                << tau_center << " " << x_center << " " 
                                << y_center << " " << eta_center << " " 
