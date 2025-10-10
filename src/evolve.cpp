@@ -866,6 +866,7 @@ int Evolve::FindFreezeOutSurface_Cornelius_XY(double tau, int ieta,
 
                 // finally output results !!!!
                 if (surface_in_binary) {
+                        float dummy1 =0., dummy2=0.;
                     float array[] = {static_cast<float>(tau_center),
                                      static_cast<float>(x_center),
                                      static_cast<float>(y_center),
@@ -881,6 +882,8 @@ int Evolve::FindFreezeOutSurface_Cornelius_XY(double tau, int ieta,
                                      static_cast<float>(epsFO),
                                      static_cast<float>(TFO),
                                      static_cast<float>(muB),
+                                     static_cast<float>(dummy1),
+                                     static_cast<float>(dummy2),
                                      static_cast<float>(eps_plus_p_over_T_FO),
                                      static_cast<float>(Wtautau_center),
                                      static_cast<float>(Wtaux_center),
@@ -898,10 +901,11 @@ int Evolve::FindFreezeOutSurface_Cornelius_XY(double tau, int ieta,
                                      static_cast<float>(qx_center),
                                      static_cast<float>(qy_center),
                                      static_cast<float>(qeta_center)};
-                    for (int i = 0; i < 32; i++) {
+                    for (int i = 0; i < 34; i++) {
                         s_file.write((char*) &(array[i]), sizeof(float));
                     }
                 } else {
+                        float dummy1 =0., dummy2=0.;            //later for muS,muC
                     s_file << scientific << setprecision(10)
                            << tau_center << " " << x_center << " "
                            << y_center << " " << eta_center << " "
@@ -909,7 +913,8 @@ int Evolve::FindFreezeOutSurface_Cornelius_XY(double tau, int ieta,
                            << FULLSU[2] << " " << FULLSU[3] << " "
                            << utau_center << " " << ux_center << " "
                            << uy_center << " " << ueta_center << " "
-                           << epsFO << " " << TFO << " " << muB << " "
+                           << epsFO << " " << TFO << " " 
+                           << muB << " " << dummy1 << " "<< dummy2 << " "
                            << eps_plus_p_over_T_FO << " "
                            << Wtautau_center << " " << Wtaux_center << " "
                            << Wtauy_center << " " << Wtaueta_center << " "
@@ -1106,6 +1111,7 @@ void Evolve::FreezeOut_equal_tau_Surface_XY(double tau, int ieta,
 
             // finally output results
             if (surface_in_binary) {
+                        float dummy1 =0., dummy2=0.;
                 float array[] = {static_cast<float>(tau_center),
                                  static_cast<float>(x_center),
                                  static_cast<float>(y_center),
@@ -1121,6 +1127,8 @@ void Evolve::FreezeOut_equal_tau_Surface_XY(double tau, int ieta,
                                  static_cast<float>(e_local),
                                  static_cast<float>(T_local),
                                  static_cast<float>(muB_local),
+                                 static_cast<float>(dummy1),
+                                 static_cast<float>(dummy2),
                                  static_cast<float>(eps_plus_p_over_T),
                                  static_cast<float>(Wtautau_center),
                                  static_cast<float>(Wtaux_center),
@@ -1142,6 +1150,7 @@ void Evolve::FreezeOut_equal_tau_Surface_XY(double tau, int ieta,
                     s_file.write((char*) &(array[i]), sizeof(float));
                 }
             } else {
+                float dummy1 =0., dummy2 =0.;
                 s_file << scientific << setprecision(10) 
                        << tau_center     << " " << x_center          << " " 
                        << y_center       << " " << eta_center        << " " 
@@ -1150,7 +1159,8 @@ void Evolve::FreezeOut_equal_tau_Surface_XY(double tau, int ieta,
                        << utau_center    << " " << ux_center         << " " 
                        << uy_center      << " " << ueta_center       << " " 
                        << e_local        << " " << T_local           << " "
-                       << muB_local      << " " << eps_plus_p_over_T << " " 
+                       << muB_local      << " " << dummy1            << " " 
+                       << dummy2         << " " << eps_plus_p_over_T << " " 
                        << Wtautau_center << " " << Wtaux_center      << " " 
                        << Wtauy_center   << " " << Wtaueta_center    << " " 
                        << Wxx_center     << " " << Wxy_center        << " " 
@@ -1612,6 +1622,7 @@ int Evolve::FindFreezeOutSurface_boostinvariant_Cornelius(
 
                     // finally output results !!!!
                     if (surface_in_binary) {
+                        float dummy1 =0. , dummy2 =0.;
                         float array[] = {static_cast<float>(tau_center),
                                          static_cast<float>(x_center),
                                          static_cast<float>(y_center),
@@ -1627,6 +1638,8 @@ int Evolve::FindFreezeOutSurface_boostinvariant_Cornelius(
                                          static_cast<float>(epsFO),
                                          static_cast<float>(TFO),
                                          static_cast<float>(muB),
+                                         static_cast<float>(dummy1),
+                                         static_cast<float>(dummy2),
                                          static_cast<float>(eps_plus_p_over_T_FO),
                                          static_cast<float>(Wtautau_center),
                                          static_cast<float>(Wtaux_center),
@@ -1644,10 +1657,11 @@ int Evolve::FindFreezeOutSurface_boostinvariant_Cornelius(
                                          static_cast<float>(qx_center),
                                          static_cast<float>(qy_center),
                                          static_cast<float>(qeta_center)};
-                        for (int i = 0; i < 32; i++) {
+                        for (int i = 0; i < 34; i++) {
                             s_file.write((char*) &(array[i]), sizeof(float));
                         }
                     } else {
+                        double dummy1=0.;dummy2=0.;
                         s_file << scientific << setprecision(10) 
                                << tau_center << " " << x_center << " " 
                                << y_center << " " << eta_center << " " 
@@ -1655,7 +1669,8 @@ int Evolve::FindFreezeOutSurface_boostinvariant_Cornelius(
                                << FULLSU[2] << " " << FULLSU[3] << " " 
                                << utau_center << " " << ux_center << " " 
                                << uy_center << " " << ueta_center << " " 
-                               << epsFO << " " << TFO << " " << muB << " " 
+                               << epsFO << " " << TFO << " " << muB << " "
+                               << dummy1 << " "<< dummy2 << " "         //for muS and muC
                                << eps_plus_p_over_T_FO << " " 
                                << Wtautau_center << " " << Wtaux_center << " " 
                                << Wtauy_center << " " << Wtaueta_center << " " 
@@ -1663,11 +1678,11 @@ int Evolve::FindFreezeOutSurface_boostinvariant_Cornelius(
                                << Wxeta_center << " " 
                                << Wyy_center << " " << Wyeta_center << " " 
                                << Wetaeta_center << " " ;
-                        if(DATA.turn_on_bulk)   // 27th column
+                        if(DATA.turn_on_bulk)   // 29th column
                             s_file << pi_b_center << " " ;
-                        if(DATA.turn_on_rhob)   // 28th column
+                        if(DATA.turn_on_rhob)   // 30th column
                             s_file << rhob_center << " " ;
-                        if(DATA.turn_on_diff)   // 29-32th column
+                        if(DATA.turn_on_diff)   // 31-34th column
                             s_file << qtau_center << " " << qx_center << " " 
                                    << qy_center << " " << qeta_center << " " ;
                         s_file << endl;
