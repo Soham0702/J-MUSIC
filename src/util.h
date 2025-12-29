@@ -44,6 +44,8 @@
 //! This is a utility class which contains a collection of helper functions.
 
 namespace Util {
+
+    const double small_eps = 1e-16;
     double **mtx_malloc(int , int );
 
     void mtx_free(double **, int, int);

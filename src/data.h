@@ -105,8 +105,51 @@ typedef struct init_data {
     int turn_on_diff;       //!< flag to include net baryon diffusion
     double shear_to_s;      //!< value of specific shear viscosity
 
+    double quest_revert_strength;   //!< value of regulation strength
     //! flag to include temperature dependent eta/s(T)
     int T_dependent_shear_to_s;
+    int muB_dependent_shear_to_s;
+
+    //! flag to include temperature dependent zeta/s(T)
+    int T_dependent_zeta_over_s;
+
+    //! flag to control the temperature dependence of eta/s(T) if "T_dependent_shear_to_s==2"
+    double shear_2_min;
+    double shear_2_slope;
+    double shear_2_curv;
+
+    //! flag to control the temperature dependence of eta/s(T) if "T_dependent_shear_to_s==3"
+    double shear_3_T_kink_in_GeV;
+    double shear_3_low_T_slope_in_GeV;
+    double shear_3_high_T_slope_in_GeV;
+    double shear_3_at_kink;
+
+    //! flag to include temperature dependent zeta/s(T)
+    int T_dependent_bulk_to_s;
+
+    //! flag to control the temperature dependence of zeta/s(T) if "T_dependent_bulk_to_s==2"
+    double bulk_2_normalisation;
+    double bulk_2_width_in_GeV;
+    double bulk_2_peak_in_GeV;
+
+    //! flag to control the temperature dependence of zeta/s(T) if "T_dependent_bulk_to_s==3"
+    double bulk_3_max;
+    double bulk_3_width_in_GeV;
+    double bulk_3_T_peak_in_GeV;
+    double bulk_3_lambda_asymm;
+
+    //! flag to control the temperature dependence of zeta/s(T) if "T_dependent_bulk_to_s==10"
+    double bulk_10_max;
+    double bulk_10_width_high;    // GeV
+    double bulk_10_width_low;     // GeV
+    double bulk_10_Tpeak;         // GeV
+
+    //! multiplicative factors for the relaxation times
+    double shear_relax_time_factor;
+    double bulk_relax_time_factor;
+
+    //! Type of bulk relaxation time
+    int bulk_relaxation_type;
 
     //! flag to include second order non-linear coupling terms
     int include_second_order_terms;

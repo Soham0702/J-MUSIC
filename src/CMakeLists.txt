@@ -29,6 +29,7 @@ set (SOURCES
     lund.cc
     tree.cc
     medium_hadro.cc
+    transport_coeffs.cpp
     )
 
 if (test)

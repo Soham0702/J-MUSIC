@@ -161,13 +161,21 @@ void Advance::FirstRKStepT(const double tau, double x_local, double y_local,
 	//if (jet_mu[0]!=0) cout << "tau_rk= " << tau_rk << " px_checker in= " << px_checker << endl;
     }	
 
+    // now MakeWSource returns partial_a W^{a mu}
+    //     // (including geometric terms)
+    TJbVec dwmn ={0.0};
+    diss_helper.MakeWSource(tau_rk, arena_current, arena_prev, ix, iy, ieta,
+                                         dwmn);
+
     for (int alpha = 0; alpha < 5; alpha++) {
         // now MakeWSource returns partial_a W^{a mu}
         // (including geometric terms)
-        double dwmn = diss_helper.MakeWSource(
-                    tau_rk, alpha, arena_current, arena_prev, ix, iy, ieta);
+        //double dwmn = diss_helper.MakeWSource(
+        //            tau_rk, alpha, arena_current, arena_prev, ix, iy, ieta);
         /* dwmn is the only one with the minus sign */
-        qi[alpha] -= dwmn*(DATA.delta_tau);
+        //qi[alpha] -= dwmn*(DATA.delta_tau);
+
+        qi[alpha] -= dwmn[alpha]*(DATA.delta_tau);
 
         // add energy moemntum and net baryon density source terms
         qi[alpha] += qi_source[alpha]*DATA.delta_tau;
@@ -353,7 +361,7 @@ void Advance::QuestRevert(double tau, Cell_small *grid_pt,
     // regulation factor in the default MUSIC
     // double factor = 300.*tanh(grid_pt->epsilon/eps_scale);
     double xi = 0.05;
-    double factor = 100.*(1./(exp(-(e_local - eps_scale)/xi) + 1.)
+    double factor = 10.*DATA.quest_revert_strength*(1./(exp(-(e_local - eps_scale)/xi) + 1.)
                           - 1./(exp(eps_scale/xi) + 1.));
     double factor_bulk = factor;
 
@@ -386,7 +394,12 @@ void Advance::QuestRevert(double tau, Cell_small *grid_pt,
 
     // Reducing the shear stress tensor
     double rho_shear_max = 0.1;
-    if (rho_shear > rho_shear_max) {
+
+    if (std::isnan(rho_shear)) {
+        for (int mu = 0; mu < 10; mu++) {
+            grid_pt->Wmunu[mu] = 0.0;
+        }
+    }else if (rho_shear > rho_shear_max) {
         if (e_local > eps_scale && DATA.echo_level > 5) {
             music_message << "ieta = " << ieta << ", ix = " << ix
                           << ", iy = " << iy
@@ -398,8 +411,8 @@ void Advance::QuestRevert(double tau, Cell_small *grid_pt,
         for (int mu = 0; mu < 10; mu++) {
             grid_pt->Wmunu[mu] = (rho_shear_max/rho_shear)*grid_pt->Wmunu[mu];
         }
-	if (temperature>0.145/hbarc && grid_pt->has_jet==1) cout << " HAS JET " << endl;
-	if (temperature>0.145/hbarc) cout << " Doing shear QR in cell= " << ix << " " << iy << " " << ieta << " " << tau << endl;
+//	if (temperature>0.145/hbarc && grid_pt->has_jet==1) cout << " HAS JET " << endl;
+//	if (temperature>0.145/hbarc) cout << " Doing shear QR in cell= " << ix << " " << iy << " " << ieta << " " << tau << endl;
 	grid_pt->did_QR=1;
     }
 
@@ -415,7 +428,7 @@ void Advance::QuestRevert(double tau, Cell_small *grid_pt,
             music_message.flush("warning");
         }
         grid_pt->pi_b = (rho_bulk_max/rho_bulk)*grid_pt->pi_b;
-	if (temperature>0.145/hbarc) cout << " Doing bulk QR in cell= " << ix << " " << iy << " " << ieta << " " << tau << endl;
+//	if (temperature>0.145/hbarc) cout << " Doing bulk QR in cell= " << ix << " " << iy << " " << ieta << " " << tau << endl;
 	grid_pt->did_QR=1;
     }
 
@@ -429,7 +442,7 @@ void Advance::QuestRevert_qmu(double tau, Cell_small *grid_pt,
     double eps_scale = 0.5;   // in 1/fm^4
 
     double xi = 0.05;
-    double factor = 100.*(1./(exp(-(grid_pt->epsilon - eps_scale)/xi) + 1.)
+    double factor = 10.*DATA.quest_revert_strength*(1./(exp(-(grid_pt->epsilon - eps_scale)/xi) + 1.)
                           - 1./(exp(eps_scale/xi) + 1.));
 
     double q_mu_local[4];
@@ -484,8 +497,8 @@ void Advance::QuestRevert_qmu(double tau, Cell_small *grid_pt,
 //! This function computes the rhs array. It computes the spatial
 //! derivatives of T^\mu\nu using the KT algorithm
 void Advance::MakeDeltaQI(double tau, SCGrid &arena_current, int ix, int iy, int ieta, TJbVec &qi, int rk_flag) {
-    double delta[4]   = {0.0, DATA.delta_x, DATA.delta_y, DATA.delta_eta};
-    double tau_fac[4] = {0.0, tau, tau, 1.0};
+    const double delta[4]   = {0.0, DATA.delta_x, DATA.delta_y, DATA.delta_eta};
+    const double tau_fac[4] = {0.0, tau, tau, 1.0};
   
     double rhs[5];
     for (int alpha = 0; alpha < 5; alpha++) {
@@ -497,7 +510,9 @@ void Advance::MakeDeltaQI(double tau, SCGrid &arena_current, int ix, int iy, int
     TJbVec qiphR = {0};
     TJbVec qimhL = {0};
     TJbVec qimhR = {0};
-  
+
+    EnergyFlowVec T_eta_m = {0.};
+    EnergyFlowVec T_eta_p = {0.};
     Neighbourloop(arena_current, ix, iy, ieta, NLAMBDAS{
         #pragma omp simd
         for (int alpha = 0; alpha < 5; alpha++) {
@@ -545,14 +560,40 @@ void Advance::MakeDeltaQI(double tau, SCGrid &arena_current, int ix, int iy, int
                                - aiph*(qiphR[alpha] - qiphL[alpha]));
             double Fimh = 0.5*((FimhL + FimhR)
                                - aimh*(qimhR[alpha] - qimhL[alpha]));
-            double DFmmp = (Fimh - Fiph)/delta[direction];
-            rhs[alpha] += DFmmp*(DATA.delta_tau);
+//            double DFmmp = (Fimh - Fiph)/delta[direction];
+//            rhs[alpha] += DFmmp*(DATA.delta_tau);
+            if (direction == 3 && (alpha == 0 || alpha == 3)) {
+                T_eta_m[alpha] = Fimh;
+                T_eta_p[alpha] = Fiph;
+                } else {
+                    double DFmmp = (Fimh - Fiph)/delta[direction];
+                    rhs[alpha] += DFmmp*(DATA.delta_tau);
+                }
+
         }
     });
 
+    // add longitudinal flux with discretized geometric terms
+    double cosh_deta = cosh(delta[3]/2.)/std::max(delta[3], Util::small_eps);
+    double sinh_deta = sinh(delta[3]/2.)/std::max(delta[3], Util::small_eps);
+    sinh_deta = std::max(0.5, sinh_deta);
+
+    if (DATA.boost_invariant) {
+        // if the simulation is boost-invariant,
+        // we directly use the limiting value at \Delta eta = 0                                                                                                          
+        // Longitudinal derivatives should be 0, we set cosh_eta = 0 here
+        cosh_deta = 0.0;
+        sinh_deta = 0.5;
+        }   
+    rhs[0] += ((  (T_eta_m[0] - T_eta_p[0])*cosh_deta
+                - (T_eta_m[3] + T_eta_p[3])*sinh_deta)*DATA.delta_tau);
+    rhs[3] += ((  (T_eta_m[3] - T_eta_p[3])*cosh_deta
+                - (T_eta_m[0] + T_eta_p[0])*sinh_deta)*DATA.delta_tau);
+                                                                        
+
     // geometric terms
-    rhs[0] -= get_TJb(arena_current(ix, iy, ieta), 3, 3)*DATA.delta_tau;
-    rhs[3] -= get_TJb(arena_current(ix, iy, ieta), 3, 0)*DATA.delta_tau;
+//    rhs[0] -= get_TJb(arena_current(ix, iy, ieta), 3, 3)*DATA.delta_tau;
+//    rhs[3] -= get_TJb(arena_current(ix, iy, ieta), 3, 0)*DATA.delta_tau;
 
     #pragma omp simd
     for (int i = 0; i < 5; i++) {
@@ -601,7 +642,8 @@ double Advance::MaxSpeed(double tau, int direc, const ReconstCell &grid_p) {
         }
     }
     double den = utau2*(1. - vs2) + vs2;
-    double f = num/(den + 1e-15);
+//    double f = num/(den + 1e-15);
+    double f = num/std::max(den, Util::small_eps);
     // check for problems
     if (f < 0.0) {
         fprintf(stderr, "SpeedMax = %e\n is negative.\n", f);

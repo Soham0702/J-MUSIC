@@ -1146,7 +1146,7 @@ void Evolve::FreezeOut_equal_tau_Surface_XY(double tau, int ieta,
                                  static_cast<float>(qx_center),
                                  static_cast<float>(qy_center),
                                  static_cast<float>(qeta_center)};
-                for (int i = 0; i < 32; i++) {
+                for (int i = 0; i < 34; i++) {
                     s_file.write((char*) &(array[i]), sizeof(float));
                 }
             } else {
