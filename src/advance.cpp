@@ -354,15 +354,16 @@ void Advance::UpdateTJbRK(const ReconstCell &grid_rk, Cell_small &grid_pt) {
 //! in the dilute region to stablize numerical simulations
 void Advance::QuestRevert(double tau, Cell_small *grid_pt,
                           int ieta, int ix, int iy) {
-    double eps_scale = 0.5;   // 1/fm^4
+    double eps_scale = 0.1;   // 1/fm^4
     double e_local   = grid_pt->epsilon;
     double rhob      = grid_pt->rhob;
 
     // regulation factor in the default MUSIC
     // double factor = 300.*tanh(grid_pt->epsilon/eps_scale);
     double xi = 0.05;
-    double factor = 10.*DATA.quest_revert_strength*(1./(exp(-(e_local - eps_scale)/xi) + 1.)
-                          - 1./(exp(eps_scale/xi) + 1.));
+    double factor = 10.*DATA.quest_revert_strength*(
+                        1./(exp(-(e_local - eps_scale)/xi) + 1.)
+                            - 1./(exp(eps_scale/xi) + 1.));
     double factor_bulk = factor;
 
     double pi_00 = grid_pt->Wmunu[0];
@@ -394,12 +395,11 @@ void Advance::QuestRevert(double tau, Cell_small *grid_pt,
 
     // Reducing the shear stress tensor
     double rho_shear_max = 0.1;
-
     if (std::isnan(rho_shear)) {
         for (int mu = 0; mu < 10; mu++) {
             grid_pt->Wmunu[mu] = 0.0;
         }
-    }else if (rho_shear > rho_shear_max) {
+    } else if (rho_shear > rho_shear_max) {
         if (e_local > eps_scale && DATA.echo_level > 5) {
             music_message << "ieta = " << ieta << ", ix = " << ix
                           << ", iy = " << iy
@@ -439,11 +439,12 @@ void Advance::QuestRevert(double tau, Cell_small *grid_pt,
 //! in the dilute region to stablize numerical simulations
 void Advance::QuestRevert_qmu(double tau, Cell_small *grid_pt,
                               int ieta, int ix, int iy) {
-    double eps_scale = 0.5;   // in 1/fm^4
+    double eps_scale = 0.1;   // in 1/fm^4
 
     double xi = 0.05;
-    double factor = 10.*DATA.quest_revert_strength*(1./(exp(-(grid_pt->epsilon - eps_scale)/xi) + 1.)
-                          - 1./(exp(eps_scale/xi) + 1.));
+    double factor = 10.*DATA.quest_revert_strength*(
+                            1./(exp(-(grid_pt->epsilon - eps_scale)/xi) + 1.)
+                            - 1./(exp(eps_scale/xi) + 1.));
 
     double q_mu_local[4];
     for (int i = 0; i < 4; i++) {
