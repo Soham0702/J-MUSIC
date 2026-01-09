@@ -728,10 +728,38 @@ void Cell_info::OutputEvolutionDataXYEta_photon(SCGrid &arena, double tau) {
 
 //! This function prints to the screen the maximum local energy density,
 //! the maximum temperature in the current grid
-void Cell_info::get_maximum_energy_density(SCGrid &arena) {
-    double eps_max  = 0.0;
-    double rhob_max = 0.0;
-    double T_max    = 0.0;
+//void Cell_info::get_maximum_energy_density(SCGrid &arena) {
+//    double eps_max  = 0.0;
+//    double rhob_max = 0.0;
+//    double T_max    = 0.0;
+//
+//    // get the grid information
+//    const int neta = arena.nEta();
+//    const int nx   = arena.nX();
+//    const int ny   = arena.nY();
+//
+//    #pragma omp parallel for collapse(3) reduction(max:eps_max, rhob_max, T_max)
+//    for (int ieta = 0; ieta < neta; ieta++)
+//    for (int ix = 0; ix < nx; ix++) 
+//    for (int iy = 0; iy < ny; iy++) {
+//        const auto eps_local  = arena(ix, iy, ieta).epsilon;
+//        const auto rhob_local = arena(ix, iy, ieta).rhob;
+//        eps_max  = std::max(eps_max,  eps_local );
+//        rhob_max = std::max(rhob_max, rhob_local);
+//        T_max    = std::max(T_max,    eos.get_temperature(eps_local, rhob_local) );
+//    }
+//    eps_max *= 0.19733;   // GeV/fm^3
+//    T_max *= 0.19733;     // GeV
+//    music_message << "eps_max = " << eps_max << " GeV/fm^3, "
+//                  << "rhob_max = " << rhob_max << " 1/fm^3, "
+//                  << "T_max = " << T_max << " GeV.";
+//    music_message.flush("info");
+//}
+void Cell_info::get_maximum_energy_density(
+        SCGrid &arena, double &e_max, double &nB_max, double &Tmax) {
+    double eps_max  = 0.0; 
+    double rhob_max = 0.0; 
+    double T_max    = 0.0; 
 
     // get the grid information
     const int neta = arena.nEta();
@@ -746,14 +774,25 @@ void Cell_info::get_maximum_energy_density(SCGrid &arena) {
         const auto rhob_local = arena(ix, iy, ieta).rhob;
         eps_max  = std::max(eps_max,  eps_local );
         rhob_max = std::max(rhob_max, rhob_local);
-        T_max    = std::max(T_max,    eos.get_temperature(eps_local, rhob_local) );
-    }
+        T_max    = std::max(T_max,    eos.get_temperature(eps_local, rhob_local));
+    }    
     eps_max *= 0.19733;   // GeV/fm^3
-    T_max *= 0.19733;     // GeV
+    T_max   *= 0.19733;   // GeV
+
+    if (eps_max > 1e5) {
+        std::cout << "The maximum e = " << eps_max << " < 1e5 GeV/fm^3"<<std::endl
+        <<"error "<<std::endl
+        <<"This normally should not happen!"<<std::endl
+        <<"Exiting ...";
+        exit(1);
+    }
     music_message << "eps_max = " << eps_max << " GeV/fm^3, "
                   << "rhob_max = " << rhob_max << " 1/fm^3, "
                   << "T_max = " << T_max << " GeV.";
     music_message.flush("info");
+    e_max = eps_max;
+    nB_max = rhob_max;
+    Tmax = T_max;
 }
 
 
